@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import struct
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -33,6 +34,23 @@ class PackageTest(unittest.TestCase):
                     self.assertGreaterEqual(x,0);self.assertGreaterEqual(y,0)
                     self.assertLessEqual(y+h,169)
                     self.assertLessEqual(x+w,doc['patcher']['devicewidth'])
+    def test_installation_and_stale_file_detection(self):
+        with tempfile.TemporaryDirectory(prefix='ccnotes-install-test-') as temporary:
+            targets=[Path(temporary)/'presets',Path(temporary)/'max4live']
+            build.install(targets)
+            build.verify_installed(targets)
+            build.install(targets)
+            self.assertFalse(any((directory/'.backups').exists() for directory in targets))
+            script=targets[0]/'gesture_device.js'
+            script.write_text('previous installed version')
+            with self.assertRaisesRegex(ValueError,'stale installed asset'):
+                build.verify_installed(targets)
+            build.install(targets)
+            build.verify_installed(targets)
+            backups=list((targets[0]/'.backups').glob('*/gesture_device.js'))
+            self.assertEqual(len(backups),1)
+            self.assertEqual(backups[0].read_text(),'previous installed version')
+
     def test_voice_controls_persist(self):
         for n in [1,4]:
             doc=build.patch('main',n)['patcher']

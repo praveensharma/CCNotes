@@ -1,12 +1,79 @@
 #!/usr/bin/env python3
 """Build MIDI-effect AMXD containers and editable patchers without modifying Live."""
+import argparse
 import json
+import os
+import tempfile
+from datetime import datetime
 import shutil
 import struct
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 ROOT = Path(__file__).resolve().parents[1]
+LIBRARY = Path.home() / 'Music/Ableton/User Library'
+INSTALL_DIRS = (
+    LIBRARY / 'Presets/MIDI Effects/Max MIDI Effect/CCNotes',
+    LIBRARY / 'Max4Live/CCNotes',
+)
+
+
+def release_assets():
+    assets = {p.name: p.read_bytes() for p in (ROOT/'dist').iterdir()
+              if p.suffix in ('.amxd', '.js')}
+    expected = {'CCNotes 1 Voice.amxd', 'CCNotes 4 Voices.amxd',
+                'CCNotes Gate Send.amxd', 'CCNotes Pitch Send.amxd',
+                'CCNotes Voice Out.amxd', 'gesture_core.js', 'gesture_device.js'}
+    if set(assets) != expected:
+        raise ValueError('Incomplete or unexpected release assets; rebuild before installing')
+    for name, data in assets.items():
+        if name.endswith('.amxd'):
+            if (data[:16] != bytes.fromhex('616d7066040000006d6d6d6d')+b'ptch'
+                    or struct.unpack('<I', data[16:20])[0] != len(data)-20):
+                raise ValueError('Invalid MIDI-effect AMXD: '+name)
+            json.loads(data[20:].rstrip(b'\0'))
+    return assets
+
+
+def atomic_write(path, data):
+    descriptor, temporary = tempfile.mkstemp(prefix='.'+path.name, dir=path.parent)
+    try:
+        with os.fdopen(descriptor, 'wb') as stream:
+            stream.write(data)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def verify_installed(targets=None):
+    assets = release_assets()
+    for directory in INSTALL_DIRS if targets is None else targets:
+        for name, data in assets.items():
+            target = directory/name
+            if not target.is_file() or target.read_bytes() != data:
+                raise ValueError('Missing or stale installed asset: '+str(target))
+
+
+def install(targets=None):
+    assets = release_assets()
+    targets = INSTALL_DIRS if targets is None else targets
+    stamp = datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+    for directory in targets:
+        directory.mkdir(parents=True, exist_ok=True)
+        for name, data in assets.items():
+            target = directory/name
+            if target.exists():
+                if target.read_bytes() == data:
+                    continue
+                backup = directory/'.backups'/stamp
+                backup.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(target, backup/name)
+            atomic_write(target, data)
+    verify_installed(targets)
+    for directory in targets:
+        print('Installed and verified: '+str(directory))
+
 SCHEMA = {
  'enabled':(0,1,1,'On',['Mute','On']), 'cc':(0,127,1,'Pitch CC',None),
  'pitchChannel':(1,16,1,'Pitch Ch',None), 'pitchSource':(0,1,0,'Pitch source',['Local','Sender']), 'low':(0,127,36,'Low note',None),
@@ -125,4 +192,20 @@ def build():
             archive.write(ROOT/name,'CCNotes/'+name)
     print('Built five MIDI effects in CCNotes/dist; keep both JS files beside the AMXDs.')
 
-if __name__=='__main__':build()
+def main():
+    parser = argparse.ArgumentParser(description='Build and install CCNotes into the Ableton User Library by default.')
+    actions = parser.add_mutually_exclusive_group()
+    actions.add_argument('--no-install', action='store_true', help='Build distribution only; skip User Library installation')
+    actions.add_argument('--install', action='store_true', help='Explicitly request the default build-and-install behavior')
+    actions.add_argument('--verify-installed', action='store_true', help='Verify installed artifacts match dist without rebuilding')
+    args = parser.parse_args()
+    if args.verify_installed:
+        verify_installed()
+        print('Verified all five AMXDs and both support scripts in both User Library CCNotes folders.')
+        return
+    build()
+    if not args.no_install:
+        install()
+
+
+if __name__=='__main__':main()

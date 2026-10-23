@@ -4,7 +4,7 @@ A separate Max for Live MIDI effect that combines a continuous pitch gesture wit
 
 ## Files and status
 
-Open `dist/CCNotes 1 Voice.amxd` for the prototype or `dist/CCNotes 4 Voices.amxd` for four voices. Keep **both `gesture_core.js` and `gesture_device.js` in the same folder as the AMXDs**. This is an unfrozen distribution folder, not a single self-contained binary. Copy the whole `dist` folder if moving it. No User Library installation or existing project changes were performed.
+Open `dist/CCNotes 1 Voice.amxd` for the prototype or `dist/CCNotes 4 Voices.amxd` for four voices. Keep **both `gesture_core.js` and `gesture_device.js` in the same folder as the AMXDs**. This is an unfrozen distribution folder, not a single self-contained binary. Copy the whole `dist` folder if moving it. Builds automatically install the five AMXDs and their two required support scripts into both User Library locations below, matching the other devices. Changed installed files are backed up in a hidden `.backups` subfolder; unchanged files are left alone. Each installation is checked byte for byte against `dist`.
 
 Companions, used only when needed:
 
@@ -15,6 +15,17 @@ Companions, used only when needed:
 | CCNotes Voice Out | Receive one voice on a dedicated destination track |
 
 The one-voice milestone and four-voice extension share the tested engine. Trigger, tracking, hysteresis, calibration, velocity and 14-bit features are also implemented. Automated tests cover engine behavior, simulated Max adapters, and generated packaging. The four-voice source patch was opened in installed Max 9 and its initial presentation and running diagnostics were visually checked. **Live AMXD loading, page switching, preset recall, transport/bypass delivery, physical Trails/CVM-8 input, and audible hardware output remain acceptance checks.** The standalone Max installation reports saving disabled; this does not establish Live's bundled Max behavior.
+
+## User Library installation
+
+Run `python3 tools/build.py` to build and install automatically:
+
+- `~/Music/Ableton/User Library/Presets/MIDI Effects/Max MIDI Effect/CCNotes/`
+- `~/Music/Ableton/User Library/Max4Live/CCNotes/`
+
+In Live, browse User Library → Max4Live → CCNotes, or the MIDI Effects preset location above. Start with `CCNotes 4 Voices.amxd` or `CCNotes 1 Voice.amxd`. All required scripts are installed alongside them. Reload an already-open device after rebuilding to pick up the new version.
+
+Use `python3 tools/build.py --verify-installed` to check both installed copies without changing files. `--no-install` is an explicit distribution-only option for CI or temporary builds. `--install` is accepted for consistency with the other devices and performs the default action.
 
 ## Quick start: one voice, separate controller and gate source
 
@@ -101,12 +112,13 @@ From this project directory:
 
 ```sh
 python3 tools/build.py
+python3 tools/build.py --verify-installed
 node tests/test_core.js
 node tests/test_devices.js
 python3 tests/test_package.py
 ```
 
-No external packages are required. `src/gesture_core.js` is the pure ES5 engine. `src/gesture_device.js` is the Max adapter. `tools/build.py` generates the patch graph, parameter metadata, editable `.maxpat` files and MIDI-effect AMPF containers. Both support scripts are copied beside source patchers and AMXDs. Rebuild after editing source. These AMXDs are generated containers, not Max-frozen devices.
+No external packages are required. `src/gesture_core.js` is the pure ES5 engine. `src/gesture_device.js` is the Max adapter. `tools/build.py` generates the patch graph, parameter metadata, editable `.maxpat` files and MIDI-effect AMPF containers. Both support scripts are copied beside source patchers and AMXDs, and the full release is automatically installed in the two User Library CCNotes folders. Rebuild after editing source. These AMXDs are generated containers, not Max-frozen devices.
 
 The test suite establishes phase-1 acceptance behavior, four independent voices, balanced note ownership under retriggers, trigger deadlines, hysteresis, calibration, 14-bit ordering, parser behavior, stop/disable/source loss cleanup in simulation, group isolation, parameter wiring and package consistency. See `ACCEPTANCE.md` for the remaining Live/hardware checks.
 
