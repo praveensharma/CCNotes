@@ -2,6 +2,14 @@
 
 A separate Max for Live MIDI effect that combines a continuous pitch gesture with an independent rhythmic gate. It generates ordinary MIDI notes; place an instrument after it or route its voice receivers to hardware. No Tetrachords, harmonic analysis, scale quantizer, or third-party Max external is involved.
 
+## Install and play
+
+Use Ableton Live with Max for Live. Copy the complete [dist bundle](dist/) to
+`User Library/Max4Live/CCNotes/`, keeping the AMXDs and JavaScript files together.
+Load **CCNotes 1 Voice** on a MIDI track before an instrument. Send a pitch CC
+and a gate note to hear your first note. Follow the [routing walkthrough](#quick-start-one-voice-separate-controller-and-gate-source)
+if pitch and gate arrive on separate tracks.
+
 ## Files and status
 
 Open `dist/CCNotes 1 Voice.amxd` for the prototype or `dist/CCNotes 4 Voices.amxd` for four voices. Keep **both `gesture_core.js` and `gesture_device.js` in the same folder as the AMXDs**. This is an unfrozen distribution folder, not a single self-contained binary. Copy the whole `dist` folder if moving it. Builds automatically install the five AMXDs and their two required support scripts into both User Library locations below, matching the other devices. Changed installed files are backed up in a hidden `.backups` subfolder; unchanged files are left alone. Each installation is checked byte for byte against `dist`.
